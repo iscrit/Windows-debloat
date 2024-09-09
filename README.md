@@ -1,4 +1,4 @@
-![De-Bloat Icon](https://imgur.com/0ZNawuh)
+![De-Bloat Icon](https://i.imgur.com/0ZNawuh.png)
 
 
 # **Windows De-Bloat Script Tutorial 🧹**
