@@ -40,7 +40,6 @@ $appsList = @(
     "Microsoft.ZuneMusic",
     "Microsoft.ZuneVideo",
     "Microsoft.Edge",
-    # New bloatware apps provided by the user
     "3D Viewer",
     "Adobe Express",
     "Clipchamp",
@@ -89,7 +88,9 @@ $appsList = @(
             <TextBlock Name="txtStatus" Text="Status: Idle" Margin="10" HorizontalAlignment="Center"/>
 
             <TextBlock Text="For more tools visit: " FontWeight="Bold"/>
-            <Hyperlink NavigateUri="http://flubhub.top" RequestNavigate="OnRequestNavigate">flubhub.top</Hyperlink>
+            <TextBlock>
+                <Hyperlink NavigateUri="http://flubhub.top">flubhub.top</Hyperlink>
+            </TextBlock>
         </StackPanel>
     </Grid>
 </Window>
@@ -99,13 +100,6 @@ $appsList = @(
 $reader = New-Object System.Xml.XmlNodeReader $xaml
 $window = [Windows.Markup.XamlReader]::Load($reader)
 
-# Add the event handler for Hyperlink navigation
-$window.Add_Navigating({
-    param($sender, $e)
-    [System.Diagnostics.Process]::Start($e.Uri.AbsoluteUri)
-    $e.Handled = $true
-})
-
 # Get form elements
 $appCheckBoxPanel = $window.FindName("appCheckBoxPanel")
 $btnRun = $window.FindName("btnRun")
@@ -114,6 +108,15 @@ $chkDisableTelemetry = $window.FindName("chkDisableTelemetry")
 $chkDisableCortana = $window.FindName("chkDisableCortana")
 $chkCleanDisk = $window.FindName("chkCleanDisk")
 $txtStatus = $window.FindName("txtStatus")
+
+# Handle hyperlink navigation
+$window.Add_Loaded({
+    $window.FindName("Hyperlink").RequestNavigate += {
+        param($sender, $e)
+        [System.Diagnostics.Process]::Start($e.Uri.AbsoluteUri)
+        $e.Handled = $true
+    }
+})
 
 # Dynamically create checkboxes for each app
 $appCheckboxes = @{}
