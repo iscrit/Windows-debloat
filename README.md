@@ -1,0 +1,1 @@
+```Invoke-WebRequest -Uri "https://raw.githubusercontent.com/iscrit/Windows-debloat/main/Debloat.ps1" -OutFile "$env:TEMP\Debloat.ps1"; powershell -ExecutionPolicy Bypass -File "$env:TEMP\Debloat.ps1"```
