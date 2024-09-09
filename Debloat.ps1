@@ -70,22 +70,27 @@ $appsList = @(
 
 # Create GUI using XAML
 [xml]$xaml = @"
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Title="Windows De-Bloat Script" Height="450" Width="350">
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Title="Windows De-Bloat Script" Height="600" Width="500">
     <Grid>
         <StackPanel Margin="10">
-            <TextBlock Text="Select Apps to Remove:" FontWeight="Bold" FontSize="14"/>
+            <TextBlock Text="Select Apps to Remove:" FontWeight="Bold" FontSize="16"/>
 
-            <ScrollViewer Height="200">
+            <ScrollViewer Height="300">
                 <StackPanel Name="appCheckBoxPanel" Margin="5"/>
             </ScrollViewer>
             
+            <Button Name="btnSelectAll" Content="Select All" Width="100" Margin="10" HorizontalAlignment="Left"/>
             <CheckBox Name="chkDisableServices" Content="Disable Unnecessary Services" IsChecked="True" Margin="5"/>
             <CheckBox Name="chkDisableTelemetry" Content="Disable Telemetry" IsChecked="True" Margin="5"/>
             <CheckBox Name="chkDisableCortana" Content="Disable Cortana" IsChecked="True" Margin="5"/>
-            <CheckBox Name="chkCleanDisk" Content="Clean Disk" IsChecked="True" Margin="5"/>
 
-            <Button Name="btnRun" Content="Run" Width="80" HorizontalAlignment="Center" Margin="10"/>
+            <Button Name="btnRun" Content="Run" Width="80" Margin="10" HorizontalAlignment="Center"/>
             <TextBlock Name="txtStatus" Text="Status: Idle" Margin="10" HorizontalAlignment="Center"/>
+
+            <TextBlock Text="Additional Options:" FontWeight="Bold" FontSize="16"/>
+            <CheckBox Name="chkInstallIntelDrivers" Content="Install Intel Drivers" Margin="5"/>
+            <CheckBox Name="chkInstallAMDDdrivers" Content="Install AMD Drivers" Margin="5"/>
+            <CheckBox Name="chkInstallChromium" Content="Install Chromium" Margin="5"/>
 
             <TextBlock Text="For more tools visit: " FontWeight="Bold"/>
             <TextBlock>
@@ -103,20 +108,21 @@ $window = [Windows.Markup.XamlReader]::Load($reader)
 # Get form elements
 $appCheckBoxPanel = $window.FindName("appCheckBoxPanel")
 $btnRun = $window.FindName("btnRun")
+$btnSelectAll = $window.FindName("btnSelectAll")
 $chkDisableServices = $window.FindName("chkDisableServices")
 $chkDisableTelemetry = $window.FindName("chkDisableTelemetry")
 $chkDisableCortana = $window.FindName("chkDisableCortana")
-$chkCleanDisk = $window.FindName("chkCleanDisk")
 $txtStatus = $window.FindName("txtStatus")
+$chkInstallIntelDrivers = $window.FindName("chkInstallIntelDrivers")
+$chkInstallAMDDdrivers = $window.FindName("chkInstallAMDDdrivers")
+$chkInstallChromium = $window.FindName("chkInstallChromium")
 
 # Handle hyperlink navigation
-$window.Add_Loaded({
-    $window.FindName("Hyperlink").RequestNavigate += {
-        param($sender, $e)
-        [System.Diagnostics.Process]::Start($e.Uri.AbsoluteUri)
-        $e.Handled = $true
-    }
-})
+$window.FindName("Hyperlink").RequestNavigate += {
+    param($sender, $e)
+    [System.Diagnostics.Process]::Start($e.Uri.AbsoluteUri)
+    $e.Handled = $true
+}
 
 # Dynamically create checkboxes for each app
 $appCheckboxes = @{}
@@ -131,14 +137,27 @@ foreach ($app in $appsList) {
 # Define event for button click
 $btnRun.Add_Click({
     $txtStatus.Text = "Status: Running..."
+    $removedApps = @()
 
     # Remove selected apps
     foreach ($app in $appCheckboxes.Keys) {
         if ($appCheckboxes[$app].IsChecked -eq $true) {
             $txtStatus.Text = "Status: Removing $app..."
-            Get-AppxPackage -Name $app | Remove-AppxPackage -ErrorAction SilentlyContinue
-            Get-AppxProvisionedPackage -Online | Where-Object DisplayName -EQ $app | Remove-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue
+            try {
+                Get-AppxPackage -Name $app | Remove-AppxPackage -ErrorAction Stop
+                Get-AppxProvisionedPackage -Online | Where-Object DisplayName -EQ $app | Remove-AppxProvisionedPackage -Online -ErrorAction Stop
+                $removedApps += $app
+            } catch {
+                $txtStatus.Text = "Status: $app could not be removed. Already removed or not found."
+            }
         }
+    }
+
+    # Remove successfully deleted apps from the list
+    foreach ($app in $removedApps) {
+        $appCheckboxes[$app].IsChecked = $false
+        $appCheckBoxPanel.Children.Remove($appCheckboxes[$app])
+        $appCheckboxes.Remove($app)
     }
 
     if ($chkDisableServices.IsChecked -eq $true) {
@@ -164,13 +183,35 @@ $btnRun.Add_Click({
         Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Search" -Name AllowCortana -Value 0
     }
 
-    if ($chkCleanDisk.IsChecked -eq $true) {
-        # Clean up disk
-        $txtStatus.Text = "Status: Cleaning disk..."
-        Start-Process "cleanmgr.exe" -ArgumentList "/sagerun:1" -Wait
+    if ($chkInstallIntelDrivers.IsChecked -eq $true) {
+        # Install Intel drivers
+        $txtStatus.Text = "Status: Installing Intel drivers..."
+        Start-Process "https://downloadcenter.intel.com/download/29945" -Wait
+    }
+
+    if ($chkInstallAMDDdrivers.IsChecked -eq $true) {
+        # Install AMD drivers
+        $txtStatus.Text = "Status: Installing AMD drivers..."
+        Start-Process "https://www.amd.com/en/support" -Wait
+    }
+
+    if ($chkInstallChromium.IsChecked -eq $true) {
+        # Install Chromium
+        $txtStatus.Text = "Status: Installing Chromium..."
+        Start-Process "https://www.google.com/chrome/?platform=win64" -Wait
     }
 
     $txtStatus.Text = "Status: Completed"
+})
+
+# Event for
+# Event for Select All button
+$btnSelectAll.Add_Click({
+    foreach ($checkBox in $appCheckBoxPanel.Children) {
+        if ($checkBox -is [Windows.Controls.CheckBox]) {
+            $checkBox.IsChecked = $true
+        }
+    }
 })
 
 # Show the window
